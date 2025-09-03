@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Mueble 3D (GitHub Pages)</title>
+<style>
+  html,body { margin:0; height:100%; background:#0b0f14; color:#cde; font:14px system-ui; }
+  #c { display:block; width:100%; height:100%; }
+  .diag { position:fixed; right:10px; top:10px; z-index:10;
+    background:#0b0f14cc; padding:6px 8px; border-radius:8px; font-size:13px; line-height:1.4 }
+  .ok{color:#72ffa0} .err{color:#ff8a8a}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="diag" class="diag">Cargando…</div>
+
+<!-- Cargar Three.js desde CDN -->
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/controls/OrbitControls.js"></script>
+
+<script>
+(function(){
+  const diagEl = document.getElementById('diag');
+  function diag(msg, ok){ diagEl.innerHTML += "<div class='"+(ok?"ok":"err")+"'>"+msg+"</div>"; }
+
+  if (!window.THREE) { diag("❌ No se pudo cargar Three.js", false); return; } 
+  else diag("✅ Three.js cargado", true);
+  if (!THREE.OrbitControls){ diag("❌ OrbitControls NO cargado", false); } 
+  else diag("✅ OrbitControls cargado", true);
+
+  // WebGL check
+  try {
+    const gl = document.createElement('canvas').getContext('webgl');
+    if (!gl) { diag("❌ WebGL no soportado", false); return; }
+    diag("✅ WebGL OK", true);
+  } catch(e){ diag("❌ Error WebGL", false); return; }
+
+  // ====== Escena ======
+  const canvas=document.getElementById('c');
+  const renderer=new THREE.WebGLRenderer({canvas,antialias:true});
+  const scene=new THREE.Scene();
+  scene.background=new THREE.Color(0x0b0f14);
+
+  const camera=new THREE.PerspectiveCamera(45,2,1,50000);
+  camera.position.set(2500,-2600,1200);
+
+  const controls=new THREE.OrbitControls(camera,renderer.domElement);
+  controls.enableDamping=true;
+  controls.target.set(1500,0,430);
+
+  scene.add(new THREE.HemisphereLight(0xffffff,0x101418,0.9));
+  const dir=new THREE.DirectionalLight(0xffffff,0.9);
+  dir.position.set(3000,-2000,2000);
+  scene.add(dir);
+
+  // Grilla y ejes
+  const axes=new THREE.AxesHelper(500); scene.add(axes);
+  const grid=new THREE.GridHelper(6000,60,0x2a3a4d,0x1c2734);
+  grid.rotation.x=Math.PI/2; grid.position.set(1500,0,0); scene.add(grid);
+
+  // ======= Mueble (3000×620×870, sin tapa) =======
+  const W=3000, D=620, H=870, T=18, WL=800, WC=1400, WR=800;
+  const matCuerpo=new THREE.MeshStandardMaterial({color:0xdadada});
+  const matFront=new THREE.MeshStandardMaterial({color:0x4d80bd});
+  const matCaja=new THREE.MeshStandardMaterial({color:0x87cefa});
+  const matPuerta=new THREE.MeshStandardMaterial({color:0x2a8c55});
+  const matPuertaAb=new THREE.MeshStandardMaterial({color:0x90ee90,transparent:true,opacity:0.9});
+
+  function box(dx,dy,dz,mat,x=0,y=0,z=0){
+    const m=new THREE.Mesh(new THREE.BoxGeometry(dx,dy,dz),mat);
+    m.position.set(x+dx/2,y+dy/2,z+dz/2); scene.add(m); return m;
+  }
+
+  // Carcasa básica
+  box(W,T,T,matCuerpo,0,0,0);        // piso
+  box(W,T,H,matCuerpo,0,D-T,0);      // fondo
+  box(T,D,H,matCuerpo,0,0,0);        // lateral izq
+  box(T,D,H,matCuerpo,W-T,0,0);      // lateral der
+
+  // Cajón izq abierto
+  box(WL,200,H/4-4,matCaja,0,-200,2);
+  box(WL,T,H/4-4,matFront,0,-T,2);
+
+  // Puerta central izq abierta
+  const pivot=new THREE.Group(); pivot.position.set(WL,0,0); scene.add(pivot);
+  const puertaIzq=new THREE.Mesh(new THREE.BoxGeometry(WC/2,T,H-4),matPuertaAb);
+  puertaIzq.position.set(WC/4,T/2,(H-4)/2); pivot.add(puertaIzq);
+  pivot.rotation.y=-THREE.Math.degToRad(70);
+
+  // Puerta central der cerrada
+  box(WC/2,T,H-4,matPuerta,WL+WC/2,0,2);
+
+  // Render loop
+  function resize(){
+    const w=canvas.clientWidth,h=canvas.clientHeight;
+    renderer.setSize(w,h,false); camera.aspect=w/h; camera.updateProjectionMatrix();
+  }
+  function loop(){ resize(); controls.update(); renderer.render(scene,camera); requestAnimationFrame(loop);}
+  loop();
+
+  diag("✅ Escena inicializada", true);
+})();
+</script>
+</body>
+</html>
